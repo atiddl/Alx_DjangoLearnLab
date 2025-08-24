@@ -30,10 +30,9 @@ class PostViewSet(viewsets.ModelViewSet):
         post = get_object_or_404(Post, pk=pk)
         user = request.user
 
-        if Like.objects.filter(post=post, user=user).exists():
+        like, created = Like.objects.get_or_create(user=user, post=post)
+        if not created:
             return Response({'detail': 'You already liked this post.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        Like.objects.create(post=post, user=user)
 
         if post.author != user:
             Notification.objects.create(
