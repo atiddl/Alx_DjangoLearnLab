@@ -1,10 +1,9 @@
-from rest_framework import viewsets, permissions, filters, status
+from rest_framework import viewsets, permissions, filters, status, generics
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.generics import get_object_or_404
 from .models import Post, Like, Comment
 from .serializers import PostSerializer, CommentSerializer
 from notifications.models import Notification
@@ -27,17 +26,15 @@ class PostViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def like(self, request, pk=None):
-        post = get_object_or_404(Post, pk=pk)
-        user = request.user
-
-        like, created = Like.objects.get_or_create(user=user, post=post)
+        post = generics.get_object_or_404(Post, pk=pk)
+        like, created = Like.objects.get_or_create(user=request.user, post=post)
         if not created:
             return Response({'detail': 'You already liked this post.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if post.author != user:
+        if post.author != request.user:
             Notification.objects.create(
                 recipient=post.author,
-                actor=user,
+                actor=request.user,
                 verb='liked your post',
                 target=post
             )
@@ -46,7 +43,7 @@ class PostViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def unlike(self, request, pk=None):
-        post = get_object_or_404(Post, pk=pk)
+        post = generics.get_object_or_404(Post, pk=pk)
         user = request.user
 
         like = Like.objects.filter(post=post, user=user).first()
